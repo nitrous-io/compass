@@ -32,17 +32,17 @@ var (
 	baseDomain = "nitrousbox.io"
 	boxHosts   []*Boxhost
 	defaultTTL = uint32(300)
-)
 
-func init() {
 	// initialize some test data now
 	// do we can perform things like `dig test.nitrousbox.io`
-	var data = map[string]string{
+	data = map[string]string{
 		"test":  "10.0.0.1",
 		"hello": "10.0.0.2",
 		"world": "10.0.0.3",
 	}
+)
 
+func init() {
 	for name, ip := range data {
 		boxHosts = append(boxHosts, &Boxhost{Name: name, Host: ip})
 	}
@@ -86,7 +86,6 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				host = h
 			}
 		}
-		log.Println("Got host", host)
 		if host != nil {
 			records := []dns.RR{}
 			addr := net.ParseIP(host.Host)
