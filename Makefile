@@ -1,4 +1,13 @@
+image:
+	@docker build -t registry.nitrous.io/compass .
+.PHONY: image
+
+shell: image
+	@./script/shell
+.PHONY: shell
+
 setup:
+	@rm -rf _vendor
 	@./script/setup
 .PHONY: setup
 

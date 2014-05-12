@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -e
 
-export GOPATH=$(pwd):/vendor:$GOPATH
-go install -v github.com/nitrous-io/compass/compass
+docker run \
+  --volume $(pwd):/opt/src/github.com/nitrous-io/compass \
+  -i -t registry.nitrous.io/compass /bin/bash
