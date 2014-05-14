@@ -1,18 +1,22 @@
 package compass
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/miekg/dns"
 )
 
+var testPort = 9999
+
 func testServer() *Server {
 	config := &Config{
-		Addr:   "localhost:9999",
+		Addr:   fmt.Sprintf("localhost:%d", testPort),
 		Domain: "n2oapp.com.",
 	}
 	s, _ := NewServer(config)
 	go s.ListenAndServe()
+	testPort += 1
 	return s
 }
 
