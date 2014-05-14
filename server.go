@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/lib/pq"
 	"github.com/miekg/dns"
 	n "github.com/nitrous-io/compass/navigator"
 )
@@ -126,7 +125,7 @@ func NewServer(config *Config) (*Server, error) {
 	for _, c := range config.NavigatorConfigs {
 		n, err := NewNavigator(c.Name, c.Domain, c.Config)
 		if err != nil {
-			log.Printf("ERROR: invalid navigator %v. Ignored!", c)
+			log.Printf("ERROR: invalid navigator %v with err: %v. Ignored!", c, err)
 		}
 		navigators[c.Domain] = n
 	}

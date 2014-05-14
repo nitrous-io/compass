@@ -104,5 +104,5 @@ func sameRootDomain(request string, expected string) bool {
 }
 
 func init() {
-	n.Navigators["boxhost"] = New
+	n.Navigators["box"] = New
 }
