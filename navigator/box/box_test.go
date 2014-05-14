@@ -79,7 +79,7 @@ func TestFindByName(t *testing.T) {
 func TestLookup(t *testing.T) {
 	n := testNavigator("nitrousbox.com.").(*Navigator)
 	r, err := n.Lookup("daniel-box.nitrousbox.com.")
-	if err != nil || r[0].(*dns.CNAME).Target != "use1.nitrousbox.com" {
+	if err != nil || r[0].(*dns.CNAME).Target != "use1.nitrousbox.com." {
 		t.Fatal("Failed to get correct dns record")
 	}
 	_, err = n.Lookup("invalid-box.nitrousbox.com.")

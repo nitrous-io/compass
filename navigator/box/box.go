@@ -50,7 +50,7 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 				Class:  dns.ClassINET,
 				Ttl:    defaultTTL,
 			},
-			Target: box.Host,
+			Target: box.Host + ".", // needs to end in .
 		},
 	}, nil
 }
