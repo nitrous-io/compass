@@ -17,7 +17,9 @@ type Boxhost struct {
 }
 
 type Config struct {
-	DatabaseUrl string
+	Addr        string `json:"address"`      // host:port
+	DatabaseUrl string `json:"database_url"` // postgres://pqgotest:password@localhost/pqgotest?sslmode=verify-full
+	Domain      string `json:"domain"`       // n2oapp.com.
 }
 
 type Server struct {
@@ -28,17 +30,18 @@ type Server struct {
 }
 
 var (
-	addr       = "localhost:6666"
-	baseDomain = "nitrousbox.io"
 	boxHosts   []*Boxhost
 	defaultTTL = uint32(300)
 
 	// initialize some test data now
 	// do we can perform things like `dig test.nitrousbox.io`
 	data = map[string]string{
-		"test":  "10.0.0.1",
-		"hello": "10.0.0.2",
-		"world": "10.0.0.3",
+		"ns1":   "128.199.236.54",
+		"ns2":   "128.199.236.54",
+		"test":  "173.194.117.8",
+		"www":   "173.194.117.8",
+		"hello": "173.194.117.8",
+		"world": "173.194.117.8",
 	}
 )
 
@@ -53,14 +56,21 @@ func (s *Server) ListenAndServe() error {
 	s.mux.Handle(".", s)
 
 	s.wg.Add(2)
-	go s.createServer("tcp", addr)
-	go s.createServer("udp", addr)
+	go s.createServer("tcp", s.config.Addr)
+	go s.createServer("udp", s.config.Addr)
 	s.wg.Wait()
 	return nil
 }
 
+// TODO: ideally we want this to
+// - clean up the goroutine
+// - exit the ListenAndServe routine
+func (s *Server) Stop() {
+}
+
 func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	q := r.Question[0]
+	log.Println("Question", q, q.Qtype, q.Name)
 
 	m := new(dns.Msg)
 	m.SetReply(r)
@@ -74,14 +84,21 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			}
 		}
 
+		log.Println(q.Qtype, q.Name, m.Answer)
+
 		w.WriteMsg(m)
 	}()
+	if q.Name == s.config.Domain && q.Qtype == dns.TypeSOA {
+		log.Println("got soa", q.Name, s.SOA())
+		m.Answer = []dns.RR{s.SOA()}
+		return
+	}
 
 	switch q.Qtype {
 	case dns.TypeA:
 		var host *Boxhost
 		for _, h := range boxHosts {
-			domain := h.Name + "." + baseDomain + "."
+			domain := h.Name + "." + s.config.Domain
 			if domain == q.Name {
 				host = h
 			}
@@ -101,6 +118,31 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			records = append(records, record)
 			m.Answer = append(m.Answer, records...)
 		}
+	}
+	if len(m.Answer) == 0 {
+		m.Ns = []dns.RR{s.SOA()}
+		m.Ns[0].Header().Ttl = defaultTTL
+	}
+}
+
+func (s *Server) NS() dns.RR {
+	return &dns.NS{
+		Hdr: dns.RR_Header{Name: s.config.Domain, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: defaultTTL},
+		Ns:  "ns1." + s.config.Domain,
+	}
+}
+
+// SOA returns a SOA record for this SkyDNS instance.
+func (s *Server) SOA() dns.RR {
+	return &dns.SOA{
+		Hdr:     dns.RR_Header{Name: s.config.Domain, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: defaultTTL},
+		Ns:      "ns1." + s.config.Domain,
+		Mbox:    "admin." + s.config.Domain,
+		Serial:  uint32(time.Now().Truncate(time.Hour).Unix()),
+		Refresh: 28800,
+		Retry:   7200,
+		Expire:  604800,
+		Minttl:  defaultTTL,
 	}
 }
 

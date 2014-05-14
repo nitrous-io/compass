@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"os"
 
@@ -8,18 +10,26 @@ import (
 )
 
 func main() {
-	config := &compass.Config{}
+	configData, err := ioutil.ReadFile("config.json")
+	if err != nil {
+		fatal("Missing config file at ./config.json")
+	}
+	config := new(compass.Config)
+	err = json.Unmarshal(configData, &config)
+	if err != nil {
+		fatal("Invalid config file at ./config.json", err)
+	}
 	s, err := compass.NewServer(config)
 	if err != nil {
-		log.Println("Failed to start compass server %v", err)
-		os.Exit(1)
-		return
+		fatal("Failed to start compass server %v", err)
 	}
-
+	log.Println("Serving ...")
 	if err := s.ListenAndServe(); err != nil {
-		log.Println("compass exit with err %v", err)
-		os.Exit(1)
-		return
+		fatal("compass exit with err %v", err)
 	}
-	log.Println("compass exitting....")
+}
+
+func fatal(a ...interface{}) {
+	log.Println(a...)
+	os.Exit(1)
 }
