@@ -2,6 +2,7 @@ package compass
 
 import (
 	n "github.com/nitrous-io/compass/navigator"
+	_ "github.com/nitrous-io/compass/navigator/boxhost"
 	_ "github.com/nitrous-io/compass/navigator/dummy"
 )
 

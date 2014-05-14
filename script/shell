@@ -2,4 +2,4 @@
 
 docker run \
   --volume $(pwd):/opt/src/github.com/nitrous-io/compass \
-  -i -t registry.nitrous.io/compass /bin/bash
+  -i -t registry.nitrous.io/compass ./script/start-shell
