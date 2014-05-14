@@ -8,16 +8,23 @@ import (
 )
 
 var testPort = 9999
+var testData = map[string]string{
+	"test.example.com.":  "127.0.0.1",
+	"hello.example.com.": "127.0.0.1",
+}
 
-func testServer() *Server {
+func testServer() (*Server, string) {
+	addr := fmt.Sprintf("localhost:%d", testPort)
 	config := &Config{
-		Addr:   fmt.Sprintf("localhost:%d", testPort),
-		Domain: "n2oapp.com.",
+		Addr: fmt.Sprintf("localhost:%d", testPort),
+		NavigatorConfigs: []NavigatorConfig{
+			{"dummy", "example.com.", testData},
+		},
 	}
 	s, _ := NewServer(config)
 	go s.ListenAndServe()
 	testPort += 1
-	return s
+	return s, addr
 }
 
 type dnsTestCase struct {
@@ -50,14 +57,15 @@ func assertAnswers(t *testing.T, got []dns.RR, expected []dns.RR) {
 }
 
 func TestServeBoxhost(t *testing.T) {
-	s := testServer()
+	s, addr := testServer()
 	defer s.Stop()
 
 	testCases := []dnsTestCase{
 		{
-			qname:  "test.n2oapp.com.",
-			qtype:  dns.TypeA,
-			answer: []dns.RR{newA("test.n2oapp.com. 300 A " + data["test"])},
+			qname: "test.n2oapp.com.",
+			qtype: dns.TypeA,
+			answer: []dns.RR{newA("test.example.com. 300 A " +
+				testData["test.example.com."])},
 		},
 	}
 
@@ -65,7 +73,7 @@ func TestServeBoxhost(t *testing.T) {
 		c := new(dns.Client)
 		m := new(dns.Msg)
 		m.SetQuestion(tc.qname, tc.qtype)
-		r, _, err := c.Exchange(m, "localhost:9999")
+		r, _, err := c.Exchange(m, addr)
 		if err != nil {
 			t.Fatal("Failed to get DNS response", err)
 		}

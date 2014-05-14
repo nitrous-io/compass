@@ -3,53 +3,37 @@ package compass
 import (
 	"database/sql"
 	"log"
-	"net"
+	"strings"
 	"sync"
 	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/miekg/dns"
+	n "github.com/nitrous-io/compass/navigator"
 )
 
-type Boxhost struct {
-	Name string
-	Host string
+type NavigatorConfig struct {
+	Name   string            `json:"name"`
+	Domain string            `json:"domain"` // which domain this navigator will handle
+	Config map[string]string `json:"config"` // configuration of the navigator
 }
 
 type Config struct {
-	Addr        string `json:"address"`      // host:port
-	DatabaseUrl string `json:"database_url"` // postgres://pqgotest:password@localhost/pqgotest?sslmode=verify-full
-	Domain      string `json:"domain"`       // n2oapp.com.
+	Addr             string            `json:"address"` // host:port
+	NavigatorConfigs []NavigatorConfig `json:"navigators"`
 }
 
 type Server struct {
-	config *Config
-	db     *sql.DB
-	mux    *dns.ServeMux
-	wg     *sync.WaitGroup
+	config     *Config
+	db         *sql.DB
+	mux        *dns.ServeMux
+	wg         *sync.WaitGroup
+	navigators map[string]n.Navigator
 }
 
-var (
-	boxHosts   []*Boxhost
+const (
 	defaultTTL = uint32(300)
-
-	// initialize some test data now
-	// do we can perform things like `dig test.nitrousbox.io`
-	data = map[string]string{
-		"ns1":   "128.199.236.54",
-		"ns2":   "128.199.236.54",
-		"test":  "173.194.117.8",
-		"www":   "173.194.117.8",
-		"hello": "173.194.117.8",
-		"world": "173.194.117.8",
-	}
 )
-
-func init() {
-	for name, ip := range data {
-		boxHosts = append(boxHosts, &Boxhost{Name: name, Host: ip})
-	}
-}
 
 func (s *Server) ListenAndServe() error {
 	s.mux = dns.NewServeMux()
@@ -77,72 +61,41 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	m.Authoritative = true
 	m.Answer = make([]dns.RR, 0, 10)
 
+	// always write dns message back
 	defer func() {
 		if len(m.Answer) > 1 {
 			for _, r := range m.Answer {
 				r.Header().Ttl = uint32(defaultTTL)
 			}
 		}
-
-		log.Println(q.Qtype, q.Name, m.Answer)
-
 		w.WriteMsg(m)
 	}()
-	if q.Name == s.config.Domain && q.Qtype == dns.TypeSOA {
-		log.Println("got soa", q.Name, s.SOA())
-		m.Answer = []dns.RR{s.SOA()}
+
+	// handle SOA
+	navigator, ok := s.navigators[q.Name]
+	if ok && q.Qtype == dns.TypeSOA {
+		m.Answer = navigator.NewSOA()
 		return
 	}
 
+	// handle DNS requests
 	switch q.Qtype {
 	case dns.TypeA:
-		var host *Boxhost
-		for _, h := range boxHosts {
-			domain := h.Name + "." + s.config.Domain
-			if domain == q.Name {
-				host = h
+		for domain, navigator := range s.navigators {
+			// if the navigator handles this domain
+			if strings.HasSuffix(q.Name, domain) {
+				r, err := navigator.Lookup(q.Name)
+				if err == nil {
+					m.Answer = r
+				}
 			}
-		}
-		if host != nil {
-			records := []dns.RR{}
-			addr := net.ParseIP(host.Host)
-			record := &dns.A{
-				Hdr: dns.RR_Header{
-					Name:   q.Name,
-					Rrtype: dns.TypeA,
-					Class:  dns.ClassINET,
-					Ttl:    defaultTTL,
-				},
-				A: addr,
-			}
-			records = append(records, record)
-			m.Answer = append(m.Answer, records...)
 		}
 	}
+
+	// if we cant handle the request, just return all our SOA as NS
 	if len(m.Answer) == 0 {
-		m.Ns = []dns.RR{s.SOA()}
+		m.Ns = s.allSOA()
 		m.Ns[0].Header().Ttl = defaultTTL
-	}
-}
-
-func (s *Server) NS() dns.RR {
-	return &dns.NS{
-		Hdr: dns.RR_Header{Name: s.config.Domain, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: defaultTTL},
-		Ns:  "ns1." + s.config.Domain,
-	}
-}
-
-// SOA returns a SOA record for this SkyDNS instance.
-func (s *Server) SOA() dns.RR {
-	return &dns.SOA{
-		Hdr:     dns.RR_Header{Name: s.config.Domain, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: defaultTTL},
-		Ns:      "ns1." + s.config.Domain,
-		Mbox:    "admin." + s.config.Domain,
-		Serial:  uint32(time.Now().Truncate(time.Hour).Unix()),
-		Refresh: 28800,
-		Retry:   7200,
-		Expire:  604800,
-		Minttl:  defaultTTL,
 	}
 }
 
@@ -160,10 +113,27 @@ func (s *Server) createServer(net, addr string) {
 	}
 }
 
+func (s *Server) allSOA() []dns.RR {
+	records := []dns.RR{}
+	for _, n := range s.navigators {
+		records = append(records, n.NewSOA()...)
+	}
+	return records
+}
+
 func NewServer(config *Config) (*Server, error) {
+	navigators := map[string]n.Navigator{}
+	for _, c := range config.NavigatorConfigs {
+		n, err := NewNavigator(c.Name, c.Domain, c.Config)
+		if err != nil {
+			log.Printf("ERROR: invalid navigator %v. Ignored!", c)
+		}
+		navigators[c.Domain] = n
+	}
 	server := &Server{
-		config: config,
-		wg:     new(sync.WaitGroup),
+		config:     config,
+		wg:         new(sync.WaitGroup),
+		navigators: navigators,
 	}
 	return server, nil
 }
