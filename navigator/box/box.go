@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -21,6 +23,10 @@ type Box struct {
 	Id   int
 	Name string
 	Host string
+}
+
+func (b *Box) containerName() string {
+	return fmt.Sprintf("%s-%d", b.Name, b.Id)
 }
 
 type Navigator struct {
@@ -55,11 +61,15 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 	}, nil
 }
 
-func (n *Navigator) FindByName(name string) (*Box, error) {
+func (n *Navigator) FindByName(container string) (*Box, error) {
+	_, id := parseContainerName(container)
+	if id <= 0 {
+		return nil, ErrNotFound
+	}
 	box := new(Box)
 	err := n.db.QueryRow(
-		"SELECT id, name, host FROM boxes WHERE name = $1 LIMIT 1",
-		name).Scan(&box.Id, &box.Name, &box.Host)
+		"SELECT id, name, host FROM boxes WHERE id = $1 LIMIT 1",
+		id).Scan(&box.Id, &box.Name, &box.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +111,20 @@ func sameRootDomain(request string, expected string) bool {
 	e := dns.SplitDomainName(expected)
 	le := len(e)
 	return r[lr-1] == e[le-1] && r[lr-2] == e[le-2]
+}
+
+// from the container name boxName-boxId, return boxName and boxId
+func parseContainerName(container string) (string, int) {
+	lastIndex := strings.LastIndex(container, "-")
+	if lastIndex == -1 {
+		return container, 0
+	}
+	name := container[0:lastIndex]
+	id, err := strconv.Atoi(container[lastIndex+1 : len(container)])
+	if err != nil {
+		return container, 0
+	}
+	return name, id
 }
 
 func init() {

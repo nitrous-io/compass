@@ -23,7 +23,7 @@ var dbStructure = []string{
 	`ALTER TABLE ONLY boxes ADD CONSTRAINT boxes_pkey PRIMARY KEY (id);`,
 }
 
-var fixtures = []Box{
+var fixtures = []*Box{
 	{Name: "daniel-box", Host: "use1.nitrousbox.com"},
 	{Name: "md-box", Host: "usw1.nitrousbox.com"},
 	{Name: "dqminh-box", Host: "apse1.nitrousbox.com"},
@@ -49,13 +49,14 @@ func testNavigator(domain string) n.Navigator {
 	return b
 }
 
-func insertBoxhost(db *sql.DB, values []Box) error {
-	stm, err := db.Prepare(`INSERT INTO boxes (name, host) VALUES ($1, $2)`)
+func insertBoxhost(db *sql.DB, values []*Box) error {
+	stm, err := db.Prepare(`INSERT INTO boxes (name, host) VALUES ($1, $2)
+		RETURNING ID`)
 	if err != nil {
 		return fmt.Errorf("stm error %v", err)
 	}
 	for _, b := range values {
-		_, err := stm.Exec(b.Name, b.Host)
+		err := stm.QueryRow(b.Name, b.Host).Scan(&b.Id)
 		if err != nil {
 			return err
 		}
@@ -65,7 +66,7 @@ func insertBoxhost(db *sql.DB, values []Box) error {
 
 func TestFindByName(t *testing.T) {
 	n := testNavigator("nitrousbox.com.").(*Navigator)
-	host, err := n.FindByName("daniel-box")
+	host, err := n.FindByName(fixtures[0].containerName())
 	if err != nil || host.Name != "daniel-box" || host.Host !=
 		"use1.nitrousbox.com" {
 		t.Fatal("Failed to find host")
@@ -78,8 +79,9 @@ func TestFindByName(t *testing.T) {
 
 func TestLookup(t *testing.T) {
 	n := testNavigator("nitrousbox.com.").(*Navigator)
-	r, err := n.Lookup("daniel-box.nitrousbox.com.")
-	if err != nil || r[0].(*dns.CNAME).Target != "use1.nitrousbox.com." {
+	b := fixtures[0]
+	r, err := n.Lookup(b.containerName() + ".nitrousbox.com.")
+	if err != nil || r[0].(*dns.CNAME).Target != (b.Host+".") {
 		t.Fatal("Failed to get correct dns record")
 	}
 	_, err = n.Lookup("invalid-box.nitrousbox.com.")
@@ -89,5 +91,23 @@ func TestLookup(t *testing.T) {
 	_, err = n.Lookup("daniel-box.nitrous.io.")
 	if err == nil {
 		t.Fatal("should not be able to look up invalid domain")
+	}
+}
+
+func TestParseContainerName(t *testing.T) {
+	data := []struct {
+		container string
+		name      string
+		id        int
+	}{
+		{"test-box-252", "test-box", 252},
+		{"test-box-59-252", "test-box-59", 252},
+		{"test-box", "test-box", 0},
+	}
+	for _, d := range data {
+		name, id := parseContainerName(d.container)
+		if name != d.name || id != d.id {
+			t.Fatal("failed to parse container %v, got %v %v", d, name, id)
+		}
 	}
 }
