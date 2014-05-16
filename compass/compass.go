@@ -16,15 +16,16 @@ var version string
 
 func main() {
 	flVersion := flag.Bool("v", false, "current version")
+	flConfigPath := flag.String("c", "config.json", "config path")
 	flag.Parse()
 	if *flVersion {
 		fmt.Printf("Compass: revision %s\n", version)
 		os.Exit(0)
 		return
 	}
-	configData, err := ioutil.ReadFile("config.json")
+	configData, err := ioutil.ReadFile(*flConfigPath)
 	if err != nil {
-		fatal("Missing config file at ./config.json")
+		fatal("Missing config file", *flConfigPath)
 	}
 	config := new(compass.Config)
 	err = json.Unmarshal(configData, &config)
