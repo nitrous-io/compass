@@ -16,6 +16,10 @@ run:
 	@compass
 .PHONY: setup
 
+test: image
+	@./script/test
+.PHONY: test
+
 build: image
 	@./script/build
 .PHONY: build

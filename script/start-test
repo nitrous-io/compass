@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#Setup the shell environment suitable for running tests etc...
+
+# start postgresql
+/etc/init.d/postgresql start
+
+# refetch the current vendor
+echo "Fetching dependencies ...."
+rm -rf _vendor
+./script/setup
+
+echo "Running tests"
+go test ./...
