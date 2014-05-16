@@ -17,3 +17,7 @@ rm -rf _vendor
 echo "Building revision ${VERSION} ...."
 export GOBIN=$BUILD
 go install -ldflags "-X main.version ${VERSION}" -v $PACKAGE/...
+
+cd $BUILD
+tar -f compass_${VERSION}.tgz -zv -c compass
+tar -f compass_latest.tgz -zv -c compass
