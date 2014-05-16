@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -9,7 +11,17 @@ import (
 	"github.com/nitrous-io/compass"
 )
 
+// will be injected with the build process
+var version string
+
 func main() {
+	flVersion := flag.Bool("v", false, "current version")
+	flag.Parse()
+	if *flVersion {
+		fmt.Printf("Compass: revision %s\n", version)
+		os.Exit(0)
+		return
+	}
 	configData, err := ioutil.ReadFile("config.json")
 	if err != nil {
 		fatal("Missing config file at ./config.json")

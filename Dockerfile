@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
   git \
   mercurial \
   postgresql \
+  ruby1.9.1 \
   sudo
 
 RUN /etc/init.d/postgresql start \
@@ -22,3 +23,4 @@ ENV PATH /usr/local/go/bin:$PATH
 ENV GOPATH /opt/src/github.com/nitrous-io/compass/_vendor:/opt
 
 WORKDIR /opt/src/github.com/nitrous-io/compass
+ADD . /opt/src/github.com/nitrous-io/compass

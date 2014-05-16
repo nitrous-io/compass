@@ -15,3 +15,7 @@ run:
 	@./script/install
 	@compass
 .PHONY: setup
+
+build: image
+	@./script/build
+.PHONY: build
