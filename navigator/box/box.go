@@ -94,10 +94,10 @@ func (n *Navigator) NewSOA() []dns.RR {
 func New(domain string, config map[string]string) (n.Navigator, error) {
 	db, err := sql.Open("postgres", config["database_url"])
 	if err != nil {
-		return nil, fmt.Errorf("Boxhost: failed to get db connection %v", err)
+		return nil, fmt.Errorf("Box: failed to get db connection %v", err)
 	}
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("Boxhost: failed to get db connection %v", err)
+		return nil, fmt.Errorf("Box: failed to ping db %v", err)
 	}
 	return &Navigator{
 		domain: domain,
