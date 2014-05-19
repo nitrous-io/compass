@@ -80,3 +80,24 @@ func TestServeBoxhost(t *testing.T) {
 		assertAnswers(t, r.Answer, tc.answer)
 	}
 }
+
+func TestNewServerWithEmptyNavigators(t *testing.T) {
+	s, err := NewServer(&Config{
+		Addr: fmt.Sprintf("localhost:%d", testPort),
+	})
+	if err == nil || s != nil {
+		t.Fatal("Missing navigators should stop the world.")
+	}
+}
+
+func TestNewServerWithInvalidNavigators(t *testing.T) {
+	_, err := NewServer(&Config{
+		Addr: fmt.Sprintf("localhost:%d", testPort),
+		NavigatorConfigs: []NavigatorConfig{
+			{"box", "example.com.", map[string]string{"database_url": ""}},
+		},
+	})
+	if err == nil {
+		t.Fatal("Invalid navigator should stop the world.")
+	}
+}

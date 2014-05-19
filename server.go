@@ -2,6 +2,7 @@ package compass
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -125,9 +126,13 @@ func NewServer(config *Config) (*Server, error) {
 	for _, c := range config.NavigatorConfigs {
 		n, err := NewNavigator(c.Name, c.Domain, c.Config)
 		if err != nil {
-			log.Printf("ERROR: invalid navigator %v with err: %v. Ignored!", c, err)
+			return nil, fmt.Errorf("ERROR: invalid navigator %v with err: %v",
+				c, err)
 		}
 		navigators[c.Domain] = n
+	}
+	if len(navigators) == 0 {
+		return nil, fmt.Errorf("ERROR: empty navigators %v", config)
 	}
 	server := &Server{
 		config:     config,
