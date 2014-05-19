@@ -23,3 +23,6 @@ test: image
 build: image
 	@./script/build
 .PHONY: build
+
+release: build
+	@./script/release
