@@ -9,7 +9,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/miekg/dns"
-	n "github.com/nitrous-io/compass/navigator"
+	nav "github.com/nitrous-io/compass/navigator"
 )
 
 const defaultTTL = uint32(300)
@@ -57,10 +57,11 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 }
 
 func (n *Navigator) FindByName(name string) (*Boxhost, error) {
+	_, id := nav.ParseDomainName(name)
 	host := new(Boxhost)
 	err := n.db.QueryRow(
-		"SELECT id, name, ip_address FROM boxhosts WHERE name = $1 LIMIT 1",
-		name).Scan(&host.Id, &host.Name, &host.IpAddress)
+		"SELECT id, name, ip_address FROM boxhosts WHERE id = $1 LIMIT 1",
+		id).Scan(&host.Id, &host.Name, &host.IpAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +83,7 @@ func (n *Navigator) NewSOA() []dns.RR {
 	}
 }
 
-func New(domain string, config map[string]string) (n.Navigator, error) {
+func New(domain string, config map[string]string) (nav.Navigator, error) {
 	db, err := sql.Open("postgres", config["database_url"])
 	if err != nil {
 		return nil, fmt.Errorf("Boxhost: failed to get db connection %v", err)
@@ -105,5 +106,5 @@ func sameRootDomain(request string, expected string) bool {
 }
 
 func init() {
-	n.Navigators["boxhost"] = New
+	nav.Navigators["boxhost"] = New
 }

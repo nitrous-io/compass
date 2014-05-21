@@ -23,7 +23,7 @@ var dbStructure = []string{
 	`ALTER TABLE ONLY boxhosts ADD CONSTRAINT boxhosts_pkey PRIMARY KEY (id);`,
 }
 
-var fixtures = []Boxhost{
+var fixtures = []*Boxhost{
 	{Name: "daniel-box", IpAddress: "10.0.0.1"},
 	{Name: "md-box", IpAddress: "10.0.0.2"},
 	{Name: "dqminh-box", IpAddress: "10.0.0.3"},
@@ -49,13 +49,14 @@ func testNavigator(domain string) n.Navigator {
 	return b
 }
 
-func insertBoxhost(db *sql.DB, values []Boxhost) error {
-	stm, err := db.Prepare(`INSERT INTO boxhosts (name, ip_address) VALUES ($1, $2)`)
+func insertBoxhost(db *sql.DB, values []*Boxhost) error {
+	stm, err := db.Prepare(`INSERT INTO boxhosts (name, ip_address)
+		VALUES ($1, $2) RETURNING ID`)
 	if err != nil {
 		return fmt.Errorf("stm error %v", err)
 	}
 	for _, b := range values {
-		_, err := stm.Exec(b.Name, b.IpAddress)
+		err := stm.QueryRow(b.Name, b.IpAddress).Scan(&b.Id)
 		if err != nil {
 			return err
 		}
@@ -64,29 +65,32 @@ func insertBoxhost(db *sql.DB, values []Boxhost) error {
 }
 
 func TestFindByName(t *testing.T) {
-	n := testNavigator("example.com.").(*Navigator)
-	host, err := n.FindByName("daniel-box")
+	nav := testNavigator("example.com.").(*Navigator)
+	bh := fixtures[0]
+	host, err := nav.FindByName(n.DomainName(bh.Id, bh.Name))
 	if err != nil || host.Name != "daniel-box" || host.IpAddress != "10.0.0.1" {
 		t.Fatal("Failed to find host")
 	}
-	_, err = n.FindByName("invalid-box")
+	_, err = nav.FindByName("invalid-box")
 	if err == nil {
 		t.Fatal("should not be able to find invalid box")
 	}
 }
 
 func TestLookup(t *testing.T) {
-	n := testNavigator("example.com.").(*Navigator)
-	r, err := n.Lookup("daniel-box.example.com.")
-	log.Println(r, err)
+	nav := testNavigator("example.com.").(*Navigator)
+	bh := fixtures[0]
+	r, err := nav.Lookup(fmt.Sprintf("%s.example.com",
+		n.DomainName(bh.Id, bh.Name)))
 	if err != nil || r[0].(*dns.A).A.String() != "10.0.0.1" {
 		t.Fatal("Failed to get correct dns record")
 	}
-	_, err = n.Lookup("invalid-box.example.com.")
+	_, err = nav.Lookup("invalid-box.example.com.")
 	if err == nil {
 		t.Fatal("should not be able to look up invalid box")
 	}
-	_, err = n.Lookup("daniel-box.nitrous.io.")
+	_, err = nav.Lookup(fmt.Sprintf("%s.nitrous.io",
+		n.DomainName(bh.Id, bh.Name)))
 	if err == nil {
 		t.Fatal("should not be able to look up invalid domain")
 	}
