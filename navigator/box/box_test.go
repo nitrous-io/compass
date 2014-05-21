@@ -93,21 +93,3 @@ func TestLookup(t *testing.T) {
 		t.Fatal("should not be able to look up invalid domain")
 	}
 }
-
-func TestParseContainerName(t *testing.T) {
-	data := []struct {
-		container string
-		name      string
-		id        int
-	}{
-		{"test-box-252", "test-box", 252},
-		{"test-box-59-252", "test-box-59", 252},
-		{"test-box", "test-box", 0},
-	}
-	for _, d := range data {
-		name, id := parseContainerName(d.container)
-		if name != d.name || id != d.id {
-			t.Fatal("failed to parse container %v, got %v %v", d, name, id)
-		}
-	}
-}

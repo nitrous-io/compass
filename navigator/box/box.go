@@ -4,13 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/miekg/dns"
-	n "github.com/nitrous-io/compass/navigator"
+	nav "github.com/nitrous-io/compass/navigator"
 )
 
 const defaultTTL = uint32(300)
@@ -35,7 +33,7 @@ type Navigator struct {
 }
 
 func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
-	if !sameRootDomain(name, n.domain) {
+	if !nav.SameRootDomain(name, n.domain) {
 		return []dns.RR{}, fmt.Errorf("cant handle domain %v", name)
 	}
 	labels := dns.SplitDomainName(name)
@@ -62,7 +60,7 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 }
 
 func (n *Navigator) FindByName(container string) (*Box, error) {
-	_, id := parseContainerName(container)
+	_, id := nav.ParseDomainName(container)
 	if id <= 0 {
 		return nil, ErrNotFound
 	}
@@ -91,7 +89,7 @@ func (n *Navigator) NewSOA() []dns.RR {
 	}
 }
 
-func New(domain string, config map[string]string) (n.Navigator, error) {
+func New(domain string, config map[string]string) (nav.Navigator, error) {
 	db, err := sql.Open("postgres", config["database_url"])
 	if err != nil {
 		return nil, fmt.Errorf("Box: failed to get db connection %v", err)
@@ -105,28 +103,6 @@ func New(domain string, config map[string]string) (n.Navigator, error) {
 	}, nil
 }
 
-func sameRootDomain(request string, expected string) bool {
-	r := dns.SplitDomainName(request)
-	lr := len(r)
-	e := dns.SplitDomainName(expected)
-	le := len(e)
-	return r[lr-1] == e[le-1] && r[lr-2] == e[le-2]
-}
-
-// from the container name boxName-boxId, return boxName and boxId
-func parseContainerName(container string) (string, int) {
-	lastIndex := strings.LastIndex(container, "-")
-	if lastIndex == -1 {
-		return container, 0
-	}
-	name := container[0:lastIndex]
-	id, err := strconv.Atoi(container[lastIndex+1 : len(container)])
-	if err != nil {
-		return container, 0
-	}
-	return name, id
-}
-
 func init() {
-	n.Navigators["box"] = New
+	nav.Navigators["box"] = New
 }
