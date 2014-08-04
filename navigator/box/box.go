@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -18,13 +19,9 @@ var (
 )
 
 type Box struct {
-	Id   int
-	Name string
-	Host string
-}
-
-func (b *Box) containerName() string {
-	return fmt.Sprintf("%s-%d", b.Name, b.Id)
+	Id     int
+	Slug   string
+	HostIP string
 }
 
 type Navigator struct {
@@ -42,32 +39,28 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 		return []dns.RR{}, fmt.Errorf("missing box name %v", name)
 	}
 	hostName := labels[llabel-3]
-	box, err := n.FindByName(hostName)
+	box, err := n.find(hostName)
 	if err != nil {
 		return []dns.RR{}, fmt.Errorf("Invalid boxname from domain %v", name)
 	}
 	return []dns.RR{
-		&dns.CNAME{
+		&dns.A{
 			Hdr: dns.RR_Header{
 				Name:   name,
-				Rrtype: dns.TypeCNAME,
+				Rrtype: dns.TypeA,
 				Class:  dns.ClassINET,
 				Ttl:    defaultTTL,
 			},
-			Target: box.Host + ".", // needs to end in .
+			A: net.ParseIP(box.HostIP),
 		},
 	}, nil
 }
 
-func (n *Navigator) FindByName(container string) (*Box, error) {
-	_, id := nav.ParseDomainName(container)
-	if id <= 0 {
-		return nil, ErrNotFound
-	}
+func (n *Navigator) find(slug string) (*Box, error) {
 	box := new(Box)
-	err := n.db.QueryRow(
-		"SELECT id, name, host FROM boxes WHERE id = $1 LIMIT 1",
-		id).Scan(&box.Id, &box.Name, &box.Host)
+	err := n.db.QueryRow(`SELECT containers.id, containers.slug, hosts.ip_address
+	FROM containers INNER JOIN hosts ON containers.host_id = hosts.id
+	WHERE containers.slug = $1 LIMIT 1`, slug).Scan(&box.Id, &box.Slug, &box.HostIP)
 	if err != nil {
 		return nil, err
 	}

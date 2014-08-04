@@ -2,7 +2,6 @@ package box
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"testing"
 
@@ -11,22 +10,24 @@ import (
 )
 
 var dbStructure = []string{
-	`DROP TABLE IF EXISTS boxes;`,
-	`CREATE TABLE boxes (
-		id integer NOT NULL,
-		name character varying(255) NOT NULL,
-		host character varying(255));`,
-	`CREATE SEQUENCE boxes_id_seq START WITH 1 INCREMENT BY 1
-		NO MINVALUE NO MAXVALUE CACHE 1;`,
-	`ALTER SEQUENCE boxes_id_seq OWNED BY boxes.id;`,
-	`ALTER TABLE ONLY boxes ALTER COLUMN id SET DEFAULT nextval('boxes_id_seq'::regclass);`,
-	`ALTER TABLE ONLY boxes ADD CONSTRAINT boxes_pkey PRIMARY KEY (id);`,
+	`DROP TABLE IF EXISTS containers;`,
+	`DROP TABLE IF EXISTS hosts;`,
+	`CREATE TABLE hosts (
+		id bigserial PRIMARY KEY NOT NULL,
+		slug character varying(255) NOT NULL,
+		ip_address character varying(255) NOT NULL);`,
+	`CREATE UNIQUE INDEX index_hosts_on_slug ON hosts USING btree (slug);`,
+	`CREATE TABLE containers (
+		id bigserial PRIMARY KEY NOT NULL,
+		slug character varying(255) NOT NULL,
+		host_id bigint REFERENCES hosts(id) NOT NULL);`,
+	`CREATE UNIQUE INDEX index_containers_on_slug ON containers USING btree (slug);`,
 }
 
 var fixtures = []*Box{
-	{Name: "daniel-box", Host: "use1.nitrousbox.com"},
-	{Name: "md-box", Host: "usw1.nitrousbox.com"},
-	{Name: "dqminh-box", Host: "apse1.nitrousbox.com"},
+	{Slug: "daniel-box", HostIP: "10.0.0.1"},
+	{Slug: "md-box", HostIP: "10.0.0.2"},
+	{Slug: "dqminh-box", HostIP: "10.0.0.3"},
 }
 
 func testNavigator(domain string) n.Navigator {
@@ -35,7 +36,7 @@ func testNavigator(domain string) n.Navigator {
 	}
 	b, err := New(domain, config)
 	if err != nil {
-		log.Println("failed to create boxhost", err)
+		log.Println("failed to create navigator", err)
 	}
 	for _, s := range dbStructure {
 		_, err = b.(*Navigator).db.Exec(s)
@@ -43,20 +44,23 @@ func testNavigator(domain string) n.Navigator {
 			log.Println("failed to set db structure", err, s)
 		}
 	}
-	if err := insertBoxhost(b.(*Navigator).db, fixtures); err != nil {
+	if err := insertContainer(b.(*Navigator).db, fixtures); err != nil {
 		log.Println("failed to set db fixtures", err)
 	}
 	return b
 }
 
-func insertBoxhost(db *sql.DB, values []*Box) error {
-	stm, err := db.Prepare(`INSERT INTO boxes (name, host) VALUES ($1, $2)
-		RETURNING ID`)
-	if err != nil {
-		return fmt.Errorf("stm error %v", err)
-	}
-	for _, b := range values {
-		err := stm.QueryRow(b.Name, b.Host).Scan(&b.Id)
+func insertContainer(db *sql.DB, containers []*Box) error {
+	for _, b := range containers {
+		var hostID int
+		var err error
+		err = db.QueryRow(`INSERT INTO hosts (slug, ip_address) VALUES ($1, $2) RETURNING ID`,
+			b.HostIP, b.HostIP).Scan(&hostID)
+		if err != nil {
+			return err
+		}
+		err = db.QueryRow(`INSERT INTO containers (slug, host_id) VALUES ($1, $2) RETURNING ID`,
+			b.Slug, hostID).Scan(&b.Id)
 		if err != nil {
 			return err
 		}
@@ -64,32 +68,31 @@ func insertBoxhost(db *sql.DB, values []*Box) error {
 	return nil
 }
 
-func TestFindByName(t *testing.T) {
+func TestFind(t *testing.T) {
 	n := testNavigator("nitrousbox.com.").(*Navigator)
-	host, err := n.FindByName(fixtures[0].containerName())
-	if err != nil || host.Name != "daniel-box" || host.Host !=
-		"use1.nitrousbox.com" {
-		t.Fatal("Failed to find host")
+	c, err := n.find(fixtures[0].Slug)
+	if err != nil || c.Slug != fixtures[0].Slug || c.HostIP != fixtures[0].HostIP {
+		t.Fatal("Failed to find a container with valid slug")
 	}
-	_, err = n.FindByName("invalid-box")
+	_, err = n.find("invalid-box")
 	if err == nil {
-		t.Fatal("should not be able to find invalid box")
+		t.Fatal("should not be able to find a container with invalid slug")
 	}
 }
 
 func TestLookup(t *testing.T) {
 	n := testNavigator("nitrousbox.com.").(*Navigator)
 	b := fixtures[0]
-	r, err := n.Lookup(b.containerName() + ".nitrousbox.com.")
-	if err != nil || r[0].(*dns.CNAME).Target != (b.Host+".") {
-		t.Fatal("Failed to get correct dns record")
+	r, err := n.Lookup(b.Slug + ".nitrousbox.com.")
+	if err != nil || r[0].(*dns.A).A.String() != b.HostIP {
+		t.Errorf("Failed to get correct dns record, got %v, expected DNS A with %s", r[0], b.HostIP)
 	}
 	_, err = n.Lookup("invalid-box.nitrousbox.com.")
 	if err == nil {
-		t.Fatal("should not be able to look up invalid box")
+		t.Error("should not be able to look up invalid box")
 	}
 	_, err = n.Lookup("daniel-box.nitrous.io.")
 	if err == nil {
-		t.Fatal("should not be able to look up invalid domain")
+		t.Error("should not be able to look up invalid domain")
 	}
 }
