@@ -13,7 +13,7 @@ RUN /etc/init.d/postgresql start \
   && sudo -u postgres createuser -U postgres --superuser root \
   && sudo -u postgres createdb -U postgres -O root -E utf8 testdb -T template0
 
-RUN curl -s https://storage.googleapis.com/golang/go1.2.2.linux-amd64.tar.gz \
+RUN curl -s https://storage.googleapis.com/golang/go1.3.linux-amd64.tar.gz \
   | tar -v -C /usr/local -xz
 
 ENV PATH /opt/bin:/usr/local/go/bin:$PATH
