@@ -6,21 +6,21 @@ shell: image
 	@./script/shell
 .PHONY: shell
 
+# setup a local development environment
 setup:
-	@rm -rf _vendor
-	@./script/setup
+	@go get github.com/nitrous-io/goop
+	@goop install
 .PHONY: setup
 
-run:
-	@./script/install
-	@compass
+run: build
+	@./build/compass
 .PHONY: setup
 
 test: image
 	@./script/test
 .PHONY: test
 
-build: image
+build: image test
 	@./script/build
 .PHONY: build
 

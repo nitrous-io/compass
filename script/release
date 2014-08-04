@@ -4,7 +4,7 @@
 
 cd $(pwd)/build
 VERSION=$(git rev-parse --short HEAD)
-BUCKET=bombay-apse.action.io
+BUCKET=nitrous-dedicated
 
 if [[ -f "compass_${VERSION}.tgz" || -f "compass_latest.tgz" ]]; then
   echo "Uploading binary packages to s3 ...."

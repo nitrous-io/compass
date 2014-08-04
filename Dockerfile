@@ -1,4 +1,4 @@
-From ubuntu:12.04
+From ubuntu:14.04
 MAINTAINER Nitrous.IO <eng@nitrous.io>
 
 RUN apt-get update && apt-get install -y \
@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y \
   git \
   mercurial \
   postgresql \
-  ruby1.9.1 \
   sudo
 
 RUN /etc/init.d/postgresql start \
@@ -17,10 +16,17 @@ RUN /etc/init.d/postgresql start \
 RUN curl -s https://storage.googleapis.com/golang/go1.2.2.linux-amd64.tar.gz \
   | tar -v -C /usr/local -xz
 
+ENV PATH /opt/bin:/usr/local/go/bin:$PATH
+RUN GOPATH=/opt go get github.com/nitrous-io/goop
+
 RUN mkdir -p /opt/src/github.com/nitrous-io/compass
+ENV GOPATH /opt/src/github.com/nitrous-io/compass/.vendor:/opt
 
-ENV PATH /usr/local/go/bin:$PATH
-ENV GOPATH /opt/src/github.com/nitrous-io/compass/_vendor:/opt
-
+# build the latest source with its dependencies
 WORKDIR /opt/src/github.com/nitrous-io/compass
+# if dependencies doesnt change, dont install extra
+ADD ./Goopfile /opt/src/github.com/nitrous-io/compass/Goopfile
+ADD ./Goopfile.lock /opt/src/github.com/nitrous-io/compass/Goopfile.lock
+RUN goop install
+
 ADD . /opt/src/github.com/nitrous-io/compass

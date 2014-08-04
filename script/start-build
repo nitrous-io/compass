@@ -5,15 +5,6 @@ VERSION=$1
 PACKAGE=github.com/nitrous-io/compass
 BUILD=$(pwd)/build
 
-
-# create build directory
-mkdir -p build
-
-# refetch the current vendor
-echo "Fetching dependencies ...."
-rm -rf _vendor
-./script/setup
-
 echo "Building revision ${VERSION} ...."
 export GOBIN=$BUILD
 go install -ldflags "-X main.version ${VERSION}" -v $PACKAGE/...
