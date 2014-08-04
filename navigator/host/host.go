@@ -1,4 +1,4 @@
-package boxhost
+package host
 
 import (
 	"database/sql"
@@ -18,7 +18,7 @@ var (
 	ErrNotFound = errors.New("RecordNotFound")
 )
 
-type Boxhost struct {
+type Host struct {
 	Id        int
 	Slug      string
 	IpAddress string
@@ -31,17 +31,17 @@ type Navigator struct {
 
 func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 	if !nav.SameRootDomain(name, n.domain) {
-		return []dns.RR{}, fmt.Errorf("cant handle domain %v", name)
+		return nil, fmt.Errorf("cant handle domain %v", name)
 	}
 	labels := dns.SplitDomainName(name)
 	llabel := len(labels)
-	if len(labels) < 3 {
-		return []dns.RR{}, fmt.Errorf("missing box name %v", name)
+	if llabel < 3 {
+		return nil, fmt.Errorf("missing host slug %v", name)
 	}
-	hostName := labels[llabel-3]
-	boxHost, err := n.find(hostName)
+	slug := labels[llabel-3]
+	h, err := n.find(slug)
 	if err != nil {
-		return []dns.RR{}, fmt.Errorf("Invalid boxname from domain %v", name)
+		return nil, fmt.Errorf("Invalid slug from domain %v", name)
 	}
 	return []dns.RR{
 		&dns.A{
@@ -51,20 +51,20 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 				Class:  dns.ClassINET,
 				Ttl:    defaultTTL,
 			},
-			A: net.ParseIP(boxHost.IpAddress),
+			A: net.ParseIP(h.IpAddress),
 		},
 	}, nil
 }
 
-func (n *Navigator) find(slug string) (*Boxhost, error) {
-	host := new(Boxhost)
+func (n *Navigator) find(slug string) (*Host, error) {
+	h := new(Host)
 	err := n.db.QueryRow(
 		"SELECT id, slug, ip_address FROM hosts WHERE slug = $1 LIMIT 1",
-		slug).Scan(&host.Id, &host.Slug, &host.IpAddress)
+		slug).Scan(&h.Id, &h.Slug, &h.IpAddress)
 	if err != nil {
 		return nil, err
 	}
-	return host, nil
+	return h, nil
 }
 
 func (n *Navigator) NewSOA() []dns.RR {
@@ -97,5 +97,5 @@ func New(domain string, config map[string]string) (nav.Navigator, error) {
 }
 
 func init() {
-	nav.Navigators["boxhost"] = New
+	nav.Navigators["host"] = New
 }

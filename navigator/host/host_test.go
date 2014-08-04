@@ -1,4 +1,4 @@
-package boxhost
+package host
 
 import (
 	"database/sql"
@@ -19,7 +19,7 @@ var dbStructure = []string{
 	`CREATE UNIQUE INDEX index_hosts_on_slug ON hosts USING btree (slug);`,
 }
 
-var fixtures = []*Boxhost{
+var fixtures = []*Host{
 	{Slug: "daniel-box", IpAddress: "10.0.0.1"},
 	{Slug: "md-box", IpAddress: "10.0.0.2"},
 	{Slug: "dqminh-box", IpAddress: "10.0.0.3"},
@@ -39,13 +39,13 @@ func testNavigator(domain string) n.Navigator {
 			log.Println("failed to set db structure", err, s)
 		}
 	}
-	if err := insertBoxhost(b.(*Navigator).db, fixtures); err != nil {
+	if err := insertHost(b.(*Navigator).db, fixtures); err != nil {
 		log.Println("failed to set db fixtures", err)
 	}
 	return b
 }
 
-func insertBoxhost(db *sql.DB, values []*Boxhost) error {
+func insertHost(db *sql.DB, values []*Host) error {
 	stm, err := db.Prepare(`INSERT INTO hosts (slug, ip_address)
 		VALUES ($1, $2) RETURNING ID`)
 	if err != nil {
@@ -75,16 +75,16 @@ func TestFind(t *testing.T) {
 
 func TestLookup(t *testing.T) {
 	nav := testNavigator("example.com.").(*Navigator)
-	bh := fixtures[0]
-	r, err := nav.Lookup(fmt.Sprintf("%s.example.com", bh.Slug))
-	if err != nil || r[0].(*dns.A).A.String() != "10.0.0.1" {
+	h := fixtures[0]
+	r, err := nav.Lookup(fmt.Sprintf("%s.example.com", h.Slug))
+	if err != nil || r[0].(*dns.A).A.String() != h.IpAddress {
 		t.Fatal("Failed to get correct dns record")
 	}
 	_, err = nav.Lookup("invalid-box.example.com.")
 	if err == nil {
 		t.Fatal("should not be able to look up invalid box")
 	}
-	_, err = nav.Lookup(fmt.Sprintf("%s.nitrous.io", bh.Slug))
+	_, err = nav.Lookup(fmt.Sprintf("%s.nitrous.io", h.Slug))
 	if err == nil {
 		t.Fatal("should not be able to look up invalid domain")
 	}
