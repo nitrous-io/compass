@@ -2,9 +2,9 @@ package compass
 
 import (
 	n "github.com/nitrous-io/compass/navigator"
-	_ "github.com/nitrous-io/compass/navigator/box"
-	_ "github.com/nitrous-io/compass/navigator/boxhost"
+	_ "github.com/nitrous-io/compass/navigator/container"
 	_ "github.com/nitrous-io/compass/navigator/dummy"
+	_ "github.com/nitrous-io/compass/navigator/host"
 )
 
 func NewNavigator(provider string, domain string, config map[string]string) (n.Navigator, error) {

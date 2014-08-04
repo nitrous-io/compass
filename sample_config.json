@@ -1,4 +1,19 @@
 {
   "address": "",
-  "domain": "example.com."
+  "navigators": [
+    {
+      "name": "container",
+      "domain": "nitrousapp.com.",
+      "config": {
+        "database_url": ""
+      }
+    },
+    {
+      "name": "host",
+      "domain": "nitrouspro.com.",
+      "config": {
+        "database_url": ""
+      }
+    }
+  ]
 }
