@@ -20,7 +20,7 @@ var (
 
 type Boxhost struct {
 	Id        int
-	Name      string
+	Slug      string
 	IpAddress string
 }
 
@@ -39,7 +39,7 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 		return []dns.RR{}, fmt.Errorf("missing box name %v", name)
 	}
 	hostName := labels[llabel-3]
-	boxHost, err := n.FindByName(hostName)
+	boxHost, err := n.find(hostName)
 	if err != nil {
 		return []dns.RR{}, fmt.Errorf("Invalid boxname from domain %v", name)
 	}
@@ -56,12 +56,11 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 	}, nil
 }
 
-func (n *Navigator) FindByName(name string) (*Boxhost, error) {
-	_, id := nav.ParseDomainName(name)
+func (n *Navigator) find(slug string) (*Boxhost, error) {
 	host := new(Boxhost)
 	err := n.db.QueryRow(
-		"SELECT id, name, ip_address FROM boxhosts WHERE id = $1 LIMIT 1",
-		id).Scan(&host.Id, &host.Name, &host.IpAddress)
+		"SELECT id, slug, ip_address FROM hosts WHERE slug = $1 LIMIT 1",
+		slug).Scan(&host.Id, &host.Slug, &host.IpAddress)
 	if err != nil {
 		return nil, err
 	}

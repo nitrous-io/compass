@@ -11,22 +11,18 @@ import (
 )
 
 var dbStructure = []string{
-	`DROP TABLE IF EXISTS boxhosts;`,
-	`CREATE TABLE boxhosts (
-		id integer NOT NULL,
-		name character varying(255) NOT NULL,
+	`DROP TABLE IF EXISTS hosts;`,
+	`CREATE TABLE hosts (
+		id bigserial PRIMARY KEY NOT NULL,
+		slug character varying(255) NOT NULL,
 		ip_address character varying(255) NOT NULL);`,
-	`CREATE SEQUENCE boxhosts_id_seq START WITH 1 INCREMENT BY 1
-		NO MINVALUE NO MAXVALUE CACHE 1;`,
-	`ALTER SEQUENCE boxhosts_id_seq OWNED BY boxhosts.id;`,
-	`ALTER TABLE ONLY boxhosts ALTER COLUMN id SET DEFAULT nextval('boxhosts_id_seq'::regclass);`,
-	`ALTER TABLE ONLY boxhosts ADD CONSTRAINT boxhosts_pkey PRIMARY KEY (id);`,
+	`CREATE UNIQUE INDEX index_hosts_on_slug ON hosts USING btree (slug);`,
 }
 
 var fixtures = []*Boxhost{
-	{Name: "daniel-box", IpAddress: "10.0.0.1"},
-	{Name: "md-box", IpAddress: "10.0.0.2"},
-	{Name: "dqminh-box", IpAddress: "10.0.0.3"},
+	{Slug: "daniel-box", IpAddress: "10.0.0.1"},
+	{Slug: "md-box", IpAddress: "10.0.0.2"},
+	{Slug: "dqminh-box", IpAddress: "10.0.0.3"},
 }
 
 func testNavigator(domain string) n.Navigator {
@@ -50,13 +46,13 @@ func testNavigator(domain string) n.Navigator {
 }
 
 func insertBoxhost(db *sql.DB, values []*Boxhost) error {
-	stm, err := db.Prepare(`INSERT INTO boxhosts (name, ip_address)
+	stm, err := db.Prepare(`INSERT INTO hosts (slug, ip_address)
 		VALUES ($1, $2) RETURNING ID`)
 	if err != nil {
 		return fmt.Errorf("stm error %v", err)
 	}
 	for _, b := range values {
-		err := stm.QueryRow(b.Name, b.IpAddress).Scan(&b.Id)
+		err := stm.QueryRow(b.Slug, b.IpAddress).Scan(&b.Id)
 		if err != nil {
 			return err
 		}
@@ -64,14 +60,14 @@ func insertBoxhost(db *sql.DB, values []*Boxhost) error {
 	return nil
 }
 
-func TestFindByName(t *testing.T) {
+func TestFind(t *testing.T) {
 	nav := testNavigator("example.com.").(*Navigator)
 	bh := fixtures[0]
-	host, err := nav.FindByName(n.DomainName(bh.Id, bh.Name))
-	if err != nil || host.Name != "daniel-box" || host.IpAddress != "10.0.0.1" {
+	host, err := nav.find(bh.Slug)
+	if err != nil || host.Slug != "daniel-box" || host.IpAddress != "10.0.0.1" {
 		t.Fatal("Failed to find host")
 	}
-	_, err = nav.FindByName("invalid-box")
+	_, err = nav.find("invalid-box")
 	if err == nil {
 		t.Fatal("should not be able to find invalid box")
 	}
@@ -80,8 +76,7 @@ func TestFindByName(t *testing.T) {
 func TestLookup(t *testing.T) {
 	nav := testNavigator("example.com.").(*Navigator)
 	bh := fixtures[0]
-	r, err := nav.Lookup(fmt.Sprintf("%s.example.com",
-		n.DomainName(bh.Id, bh.Name)))
+	r, err := nav.Lookup(fmt.Sprintf("%s.example.com", bh.Slug))
 	if err != nil || r[0].(*dns.A).A.String() != "10.0.0.1" {
 		t.Fatal("Failed to get correct dns record")
 	}
@@ -89,8 +84,7 @@ func TestLookup(t *testing.T) {
 	if err == nil {
 		t.Fatal("should not be able to look up invalid box")
 	}
-	_, err = nav.Lookup(fmt.Sprintf("%s.nitrous.io",
-		n.DomainName(bh.Id, bh.Name)))
+	_, err = nav.Lookup(fmt.Sprintf("%s.nitrous.io", bh.Slug))
 	if err == nil {
 		t.Fatal("should not be able to look up invalid domain")
 	}
