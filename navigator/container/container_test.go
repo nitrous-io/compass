@@ -1,4 +1,4 @@
-package box
+package container
 
 import (
 	"database/sql"
@@ -24,7 +24,7 @@ var dbStructure = []string{
 	`CREATE UNIQUE INDEX index_containers_on_slug ON containers USING btree (slug);`,
 }
 
-var fixtures = []*Box{
+var fixtures = []*Container{
 	{Slug: "daniel-box", HostIP: "10.0.0.1"},
 	{Slug: "md-box", HostIP: "10.0.0.2"},
 	{Slug: "dqminh-box", HostIP: "10.0.0.3"},
@@ -50,7 +50,7 @@ func testNavigator(domain string) n.Navigator {
 	return b
 }
 
-func insertContainer(db *sql.DB, containers []*Box) error {
+func insertContainer(db *sql.DB, containers []*Container) error {
 	for _, b := range containers {
 		var hostID int
 		var err error
@@ -82,10 +82,10 @@ func TestFind(t *testing.T) {
 
 func TestLookup(t *testing.T) {
 	n := testNavigator("nitrousbox.com.").(*Navigator)
-	b := fixtures[0]
-	r, err := n.Lookup(b.Slug + ".nitrousbox.com.")
-	if err != nil || r[0].(*dns.A).A.String() != b.HostIP {
-		t.Errorf("Failed to get correct dns record, got %v, expected DNS A with %s", r[0], b.HostIP)
+	c := fixtures[0]
+	r, err := n.Lookup(c.Slug + ".nitrousbox.com.")
+	if err != nil || r[0].(*dns.A).A.String() != c.HostIP {
+		t.Errorf("Failed to get correct dns record, got %v, expected DNS A with %s", r[0], c.HostIP)
 	}
 	_, err = n.Lookup("invalid-box.nitrousbox.com.")
 	if err == nil {
