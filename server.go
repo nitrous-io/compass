@@ -87,6 +87,8 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				r, err := navigator.Lookup(q.Name)
 				if err == nil {
 					m.Answer = r
+				} else {
+					log.Printf("navigator %s failed to resolve %s, err %s", domain, q.Name, err)
 				}
 			}
 		}
