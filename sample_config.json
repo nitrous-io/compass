@@ -1,16 +1,17 @@
 {
   "address": "",
+  "proxy_domain": "",
   "navigators": [
     {
-      "name": "container",
-      "domain": "nitrousapp.com.",
+      "name": "host",
+      "domain": "nitrouspro.com.",
       "config": {
         "database_url": ""
       }
     },
     {
-      "name": "host",
-      "domain": "nitrouspro.com.",
+      "name": "proxy",
+      "domain": "nitrousproxy.com.",
       "config": {
         "database_url": ""
       }
