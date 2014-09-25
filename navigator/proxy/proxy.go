@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -28,6 +27,7 @@ type Host struct {
 type Navigator struct {
 	domain string
 	db     *sql.DB
+	config map[string]string
 }
 
 func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
@@ -40,15 +40,12 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 		return nil, fmt.Errorf("Missing host slug %v", name)
 	}
 	slug := labels[llabel-3]
-	log.Println("slug: ", slug)
 	h, err := n.find(slug)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid slug from domain %v", name)
 	}
-	log.Println("region_slug:", h.RegionSlug)
-	cname := fmt.Sprintf("nitrousproxy-%s.com.", h.RegionSlug)
-	log.Println("name:", name)
-	log.Println("cname:", cname)
+
+	cname := fmt.Sprintf("%s.%s.", h.Slug, n.config[h.RegionSlug])
 	return []dns.RR{
 		&dns.CNAME{
 			Hdr: dns.RR_Header{
@@ -100,6 +97,7 @@ func New(domain string, config map[string]string) (nav.Navigator, error) {
 	return &Navigator{
 		domain: domain,
 		db:     db,
+		config: config,
 	}, nil
 }
 

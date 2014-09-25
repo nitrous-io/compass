@@ -20,7 +20,6 @@ type NavigatorConfig struct {
 
 type Config struct {
 	Addr             string            `json:"address"` // host:port
-	ProxyDomain      string            `json:"proxy_domain"`
 	NavigatorConfigs []NavigatorConfig `json:"navigators"`
 }
 

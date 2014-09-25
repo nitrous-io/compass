@@ -35,6 +35,7 @@ var fixtures = []*Host{
 func testNavigator(domain string) n.Navigator {
 	config := map[string]string{
 		"database_url": "host=/var/run/postgresql dbname=testdb sslmode=disable",
+		"sgp":          "exampleproxy-sgp.com",
 	}
 	b, err := New(domain, config)
 	if err != nil {
@@ -84,9 +85,10 @@ func TestLookup(t *testing.T) {
 	nav := testNavigator("exampleproxy.com.").(*Navigator)
 	h := fixtures[1]
 	host, err := nav.find(h.Slug)
-	cname := fmt.Sprintf("nitrousproxy-%s.com.", host.RegionSlug)
-
+	cname := fmt.Sprintf("%s.%s.", h.Slug, nav.config[host.RegionSlug])
 	r, err := nav.Lookup(fmt.Sprintf("%s.exampleproxy.com", h.Slug))
+
+	log.Println("cname:", cname)
 	log.Println("record:", r)
 
 	if err != nil || r[0].(*dns.CNAME).Target != cname {

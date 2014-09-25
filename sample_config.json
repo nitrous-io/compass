@@ -1,6 +1,5 @@
 {
   "address": "",
-  "proxy_domain": "",
   "navigators": [
     {
       "name": "host",
@@ -13,7 +12,8 @@
       "name": "proxy",
       "domain": "nitrousproxy.com.",
       "config": {
-        "database_url": ""
+        "database_url": "host=/var/run/postgresql dbname=testdb sslmode=disable",
+        "sfo": "nitrousproxy-sfo.com",
       }
     }
   ]
