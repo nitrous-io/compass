@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -45,7 +46,8 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 		return nil, fmt.Errorf("Invalid slug from domain %v", name)
 	}
 
-	cname := fmt.Sprintf("%s.%s.", h.Slug, n.config[h.RegionSlug])
+	domain := endsWithDot(n.config[h.RegionSlug])
+	cname := fmt.Sprintf("%s.%s", h.Slug, domain)
 	return []dns.RR{
 		&dns.CNAME{
 			Hdr: dns.RR_Header{
@@ -87,6 +89,7 @@ func (n *Navigator) NewSOA() []dns.RR {
 }
 
 func New(domain string, config map[string]string) (nav.Navigator, error) {
+	domainDot := endsWithDot(domain)
 	db, err := sql.Open("postgres", config["database_url"])
 	if err != nil {
 		return nil, fmt.Errorf("Boxhost: failed to get db connection %v", err)
@@ -95,10 +98,18 @@ func New(domain string, config map[string]string) (nav.Navigator, error) {
 		return nil, fmt.Errorf("Boxhost: failed to get db connection %v", err)
 	}
 	return &Navigator{
-		domain: domain,
+		domain: domainDot,
 		db:     db,
 		config: config,
 	}, nil
+}
+
+func endsWithDot(domain string) string {
+	if strings.HasSuffix(domain, ".") {
+		return domain
+	} else {
+		return fmt.Sprintf("%s.", domain)
+	}
 }
 
 func init() {
