@@ -2,17 +2,18 @@
   "address": "",
   "navigators": [
     {
-      "name": "container",
-      "domain": "nitrousapp.com.",
+      "name": "host",
+      "domain": "nitrouspro.com.",
       "config": {
         "database_url": ""
       }
     },
     {
-      "name": "host",
-      "domain": "nitrouspro.com.",
+      "name": "proxy",
+      "domain": "nitrousproxy.com.",
       "config": {
-        "database_url": ""
+        "database_url": "host=/var/run/postgresql dbname=testdb sslmode=disable",
+        "sfo": "nitrousproxy-sfo.com",
       }
     }
   ]

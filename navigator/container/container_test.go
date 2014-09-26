@@ -20,7 +20,7 @@ var dbStructure = []string{
 	`CREATE TABLE containers (
 		id bigserial PRIMARY KEY NOT NULL,
 		slug character varying(255) NOT NULL,
-		host_id bigint REFERENCES hosts(id) NOT NULL);`,
+		host_id bigint NOT NULL);`,
 	`CREATE UNIQUE INDEX index_containers_on_slug ON containers USING btree (slug);`,
 }
 

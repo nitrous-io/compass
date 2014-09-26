@@ -36,9 +36,9 @@ func main() {
 	if err != nil {
 		fatal("Failed to start compass server %v", err)
 	}
-	log.Println("Serving ...")
+	log.Println("compass: Name serving since 1978")
 	if err := s.ListenAndServe(); err != nil {
-		fatal("compass exit with err %v", err)
+		fatal("compass exited with error: %v", err)
 	}
 }
 
