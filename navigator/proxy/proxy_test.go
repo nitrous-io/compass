@@ -88,9 +88,6 @@ func TestLookup(t *testing.T) {
 	cname := fmt.Sprintf("%s.%s.", h.Slug, nav.config[host.RegionSlug])
 	r, err := nav.Lookup(fmt.Sprintf("%s.exampleproxy.com", h.Slug))
 
-	log.Println("cname:", cname)
-	log.Println("record:", r)
-
 	if err != nil || r[0].(*dns.CNAME).Target != cname {
 		t.Fatal("Failed to get correct dns record")
 	}
