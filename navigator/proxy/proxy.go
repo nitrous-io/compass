@@ -46,7 +46,12 @@ func (n *Navigator) Lookup(name string) ([]dns.RR, error) {
 		return nil, fmt.Errorf("Invalid slug from domain %v", name)
 	}
 
-	domain := endsWithDot(n.config[h.RegionSlug])
+	domain := n.config[h.RegionSlug]
+	if len(domain) == 0 {
+		return nil, fmt.Errorf("Empty proxy for region '%s', please check the config.", h.RegionSlug)
+	}
+	domain = endsWithDot(domain)
+
 	cname := fmt.Sprintf("%s.%s", h.Slug, domain)
 	return []dns.RR{
 		&dns.CNAME{
